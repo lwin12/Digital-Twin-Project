@@ -26,4 +26,6 @@ Blender is used to export the model as a .glb file, which gives a nicer output a
 
 <img width="1384" height="896" alt="image" src="https://github.com/user-attachments/assets/bd2b7b40-6c81-4773-994b-eee6808c0fef" />
 
-
+# Description of the setup
+Currently, as you can see the the 3 RPI and the host PC are connected to network switch. They are configured to be in a local area network. 
+This is because I chose to use MQTT as the median to send messages between each devices and also MQTT is the standard messaging protocol in projects that involves Internet of Thigns.
