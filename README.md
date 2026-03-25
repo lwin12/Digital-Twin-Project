@@ -22,5 +22,8 @@ Finally, Meshroom projects the original image colors onto the mesh surface. This
 Blender is used to export the model as a .glb file, which gives a nicer output and is more suitable for viewing, sharing, and downstream digital twin applications.
 
 # Setup
-<img width="1386" height="902" alt="image" src="https://github.com/user-attachments/assets/ffa98cf8-7535-42b0-a2ad-1f2b884e92ca" />
+<img width="443" height="492" alt="image" src="https://github.com/user-attachments/assets/1cbc711d-a2de-4623-a93f-2511b3a612d5" />
+
+<img width="1384" height="896" alt="image" src="https://github.com/user-attachments/assets/bd2b7b40-6c81-4773-994b-eee6808c0fef" />
+
 
