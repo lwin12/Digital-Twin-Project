@@ -27,5 +27,8 @@ Blender is used to export the model as a .glb file, which gives a nicer output a
 <img width="1384" height="896" alt="image" src="https://github.com/user-attachments/assets/bd2b7b40-6c81-4773-994b-eee6808c0fef" />
 
 # Description of the setup
-Currently, as you can see the the 3 RPI and the host PC are connected to network switch. They are configured to be in a local area network. 
-This is because I chose to use MQTT as the median to send messages between each devices and also MQTT is the standard messaging protocol in projects that involves Internet of Thigns.
+The system consists of three Raspberry Pi 4 units (A, B, and C), each equipped with a Raspberry Pi Camera Module 3 connected via FCC (flat flex cable). All three Pis are connected to a network switch via Ethernet cables, which links them to the Host PC. The Host PC also connects wirelessly to a router for internet access.
+RPi 4 (B) serves as the master node. In addition to its camera, it is connected to a microstep driver via GPIO jumper wires (DIR and PUL pins). The microstep driver is powered by a 12V 6A DC power supply (230V AC input) and drives a stepper motor configured at 19,700 steps per revolution. The stepper motor rotates the object being scanned in 15° increments across 24 positions to complete a full 360° revolution.
+RPi 4 (A) and RPi 4 (C) act as slave nodes — they only handle camera operations and respond to commands from the master.
+Software Communication
+All three Pis communicate with the Host PC through MQTT, with the broker running on the Host PC (192.168.137.1). The master coordinates the capture sequence: at each rotation step, it signals all Pis to capture simultaneously, waits for confirmation from each, then advances to the next position. Each Pi also runs a Flask web server on port 7123 for live MJPEG video streaming, allowing the host to preview camera feeds via a browser.
