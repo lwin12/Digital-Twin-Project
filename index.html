@@ -1,0 +1,1055 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Model Viewer</title>
+    <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.3.0/model-viewer.min.js"></script>
+    <style>
+        * { 
+            margin: 0; 
+            padding: 0; 
+            box-sizing: border-box; 
+        }
+        
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+        
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 10px;
+        }
+        
+        .container {
+            width: 100%;
+            height: 100%;
+            max-width: 1400px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px 30px;
+            text-align: center;
+            flex-shrink: 0;
+        }
+        
+        .header h1 {
+            font-size: 1.8em;
+            margin-bottom: 5px;
+        }
+        
+        .header p {
+            opacity: 0.9;
+            font-size: 0.9em;
+        }
+        
+        .content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            min-height: 0;
+        }
+        
+        .model-selector {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            position: relative;
+            flex-shrink: 0;
+        }
+        
+        .model-selector h2 {
+            margin-bottom: 10px;
+            color: #333;
+            font-size: 1.1em;
+        }
+
+        .search-container {
+            position: relative;
+            width: 100%;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 10px 80px 10px 14px;
+            font-size: 14px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            transition: all 0.3s;
+            font-family: inherit;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .search-controls {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            display: flex;
+            gap: 6px;
+            align-items: center;
+        }
+
+        .refresh-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 11px;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+
+        .refresh-btn:hover {
+            background: #764ba2;
+        }
+
+        .refresh-btn.refreshing {
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .auto-refresh-indicator {
+            font-size: 10px;
+            color: #28a745;
+            display: none;
+        }
+
+        .auto-refresh-indicator.active {
+            display: inline-block;
+        }
+
+        .dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 2px solid #667eea;
+            border-top: none;
+            border-radius: 0 0 8px 8px;
+            max-height: 250px;
+            overflow-y: auto;
+            display: none;
+            z-index: 1000;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        .dropdown.show {
+            display: block;
+        }
+
+        .dropdown-item {
+            padding: 10px 14px;
+            cursor: pointer;
+            transition: background 0.2s;
+            border-bottom: 1px solid #f0f0f0;
+            font-size: 13px;
+        }
+
+        .dropdown-item:last-child {
+            border-bottom: none;
+        }
+
+        .dropdown-item:hover {
+            background: #f8f9fa;
+        }
+
+        .dropdown-item.active {
+            background: #667eea;
+            color: white;
+        }
+
+        .dropdown-item.no-results {
+            padding: 15px;
+            text-align: center;
+            color: #999;
+            cursor: default;
+        }
+
+        .dropdown-item.no-results:hover {
+            background: white;
+        }
+
+        .model-count {
+            color: #666;
+            font-size: 0.85em;
+            margin-left: 8px;
+        }
+
+        .scanning {
+            color: #667eea;
+            font-size: 0.85em;
+            margin-left: 8px;
+            display: none;
+        }
+
+        .scanning.show {
+            display: inline;
+        }
+
+        .update-notification {
+            position: fixed;
+            bottom: 15px;
+            right: 15px;
+            background: #28a745;
+            color: white;
+            padding: 10px 16px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            display: none;
+            z-index: 2000;
+            animation: slideIn 0.3s ease-out;
+            font-size: 13px;
+        }
+
+        .update-notification.show {
+            display: block;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateY(100px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+        
+        .viewer-container {
+            background: #ffffff;
+            border-radius: 8px;
+            position: relative;
+            flex: 1;
+            min-height: 0;
+        }
+        
+        model-viewer {
+            width: 100%;
+            height: 100%;
+            --progress-bar-color: #667eea;
+        }
+        
+        .model-info {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            background: rgba(255,255,255,0.95);
+            padding: 12px 16px;
+            border-radius: 6px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            z-index: 10;
+            max-width: 250px;
+            pointer-events: none;
+        }
+        
+        .model-info h3 {
+            margin-bottom: 6px;
+            color: #333;
+            font-size: 1em;
+            word-wrap: break-word;
+        }
+        
+        .model-info p {
+            color: #666;
+            font-size: 0.8em;
+            margin: 3px 0;
+        }
+
+        .dimensions {
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px solid #e0e0e0;
+        }
+
+        .dimensions h4 {
+            color: #333;
+            font-size: 0.85em;
+            margin-bottom: 4px;
+        }
+
+        .dimension-item {
+            display: flex;
+            justify-content: space-between;
+            color: #666;
+            font-size: 0.75em;
+            margin: 2px 0;
+        }
+
+        .dimension-label {
+            font-weight: 500;
+        }
+
+        .dimension-value {
+            font-family: 'Courier New', monospace;
+            color: #667eea;
+        }
+
+        /* Axis Indicator */
+        .axis-indicator {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            width: 90px;
+            height: 90px;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        .axis-canvas {
+            width: 100%;
+            height: 100%;
+        }
+        
+        .error-message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            color: #666;
+            padding: 25px;
+            background: rgba(255,255,255,0.9);
+            border-radius: 8px;
+            display: none;
+            pointer-events: none;
+        }
+        
+        .error-message.show {
+            display: block;
+        }
+        
+        .footer {
+            padding: 12px 20px;
+            background: #f8f9fa;
+            text-align: center;
+            color: #666;
+            font-size: 0.8em;
+            flex-shrink: 0;
+        }
+        
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #667eea;
+            font-size: 1.1em;
+            display: none;
+            pointer-events: none;
+        }
+        
+        .loading.show {
+            display: block;
+        }
+
+        .no-models-message {
+            text-align: center;
+            padding: 30px 15px;
+            color: #999;
+        }
+
+        .no-models-message h3 {
+            color: #666;
+            margin-bottom: 8px;
+            font-size: 1em;
+        }
+
+        .no-models-message p {
+            font-size: 0.85em;
+        }
+
+        /* Mobile-specific styles */
+        @media (max-width: 768px) {
+            .model-info {
+                top: 6px;
+                left: 6px;
+                padding: 5px 8px;
+                max-width: 140px;
+            }
+
+            .model-info h3 {
+                font-size: 0.7em;
+                margin-bottom: 3px;
+            }
+
+            .model-info p {
+                font-size: 0.55em;
+                margin: 1px 0;
+            }
+
+            .dimensions {
+                margin-top: 4px;
+                padding-top: 4px;
+            }
+
+            .dimensions h4 {
+                font-size: 0.6em;
+                margin-bottom: 2px;
+            }
+
+            .dimension-item {
+                font-size: 0.5em;
+                margin: 0.5px 0;
+            }
+
+            .axis-indicator {
+                top: 6px;
+                right: 6px;
+                width: 55px;
+                height: 55px;
+            }
+
+            .axis-canvas {
+                width: 55px;
+                height: 55px;
+            }
+        }
+
+        /* Extra small phones */
+        @media (max-width: 480px) {
+            .model-info {
+                max-width: 120px;
+                padding: 4px 6px;
+            }
+
+            .model-info h3 {
+                font-size: 0.65em;
+                margin-bottom: 2px;
+            }
+
+            .model-info p {
+                font-size: 0.5em;
+                margin: 1px 0;
+            }
+
+            .dimensions h4 {
+                font-size: 0.55em;
+                margin-bottom: 1px;
+            }
+
+            .dimension-item {
+                font-size: 0.45em;
+                margin: 0;
+            }
+
+            .axis-indicator {
+                width: 45px;
+                height: 45px;
+            }
+
+            .axis-canvas {
+                width: 45px;
+                height: 45px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>3D Model Viewer</h1>
+            <p>Interactive GLB File Gallery</p>
+        </div>
+        
+        <div class="content">
+            <div class="model-selector">
+                <h2>
+                    Select Model
+                    <span class="scanning" id="scanStatus">Scanning folder...</span>
+                    <span class="model-count" id="modelCount"></span>
+                </h2>
+                <div class="search-container">
+                    <input 
+                        type="text" 
+                        class="search-input" 
+                        id="searchInput" 
+                        placeholder="Search or select a model..."
+                        autocomplete="off"
+                    >
+                    <div class="search-controls">
+                        <span class="auto-refresh-indicator" id="autoRefreshIndicator">● Auto</span>
+                        <button class="refresh-btn" id="refreshBtn" title="Refresh model list">
+                            🔄 Refresh
+                        </button>
+                    </div>
+                    <div class="dropdown" id="dropdown">
+                        <!-- Dropdown items will be generated here -->
+                    </div>
+                </div>
+                
+                <div class="no-models-message" id="noModelsMessage" style="display: none;">
+                    <h3>No GLB files found</h3>
+                    <p>Make sure you have .glb files in the same folder as this HTML file.</p>
+                </div>
+            </div>
+            
+            <div class="viewer-container" id="viewerContainer">
+                <div class="model-info" id="modelInfo">
+                    <h3 id="modelName">Select a model</h3>
+                    <p id="modelSize">Use search bar above to select</p>
+                    
+                    <div class="dimensions" id="dimensions" style="display: none;">
+                        <h4>Dimensions:</h4>
+                        <div class="dimension-item">
+                            <span class="dimension-label">Width (X):</span>
+                            <span class="dimension-value" id="dimX">-</span>
+                        </div>
+                        <div class="dimension-item">
+                            <span class="dimension-label">Height (Y):</span>
+                            <span class="dimension-value" id="dimY">-</span>
+                        </div>
+                        <div class="dimension-item">
+                            <span class="dimension-label">Depth (Z):</span>
+                            <span class="dimension-value" id="dimZ">-</span>
+                        </div>
+                        <div class="dimension-item">
+                            <span class="dimension-label">Base (X×Z):</span>
+                            <span class="dimension-value" id="dimBase">-</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Axis Indicator -->
+                <div class="axis-indicator">
+                    <canvas class="axis-canvas" id="axisCanvas" width="90" height="90"></canvas>
+                </div>
+                
+                <div class="loading" id="loading">Loading model...</div>
+                <div class="error-message" id="errorMessage">
+                    <h3>Model not found</h3>
+                    <p>Make sure the GLB file exists in the same folder</p>
+                </div>
+                
+                <model-viewer 
+                    id="viewer"
+                    camera-controls 
+                    touch-action="none"
+                    auto-rotate
+                    shadow-intensity="0"
+                    exposure="3.5"
+                    shadow-softness="1"
+                    environment-image="neutral"
+                    tone-mapping="commerce"
+                    camera-orbit="45deg 55deg 2.5m"
+                    min-camera-orbit="auto auto 0.5m"
+                    max-camera-orbit="auto auto 100m"
+                    field-of-view="45deg"
+                    interpolation-decay="200"
+                    interaction-prompt="none"
+                    disable-zoom
+                    alt="3D Model"
+                    style="--min-hotspot-opacity: 0;">
+                </model-viewer>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>Auto-refresh: 5s | Drag to rotate | Pinch/scroll to zoom</p>
+        </div>
+    </div>
+
+    <div class="update-notification" id="updateNotification">
+        Models updated! Found <span id="updateCount">0</span> models.
+    </div>
+    
+    <script>
+        const viewer = document.getElementById('viewer');
+        const viewerContainer = document.getElementById('viewerContainer');
+        const searchInput = document.getElementById('searchInput');
+        const dropdown = document.getElementById('dropdown');
+        const modelName = document.getElementById('modelName');
+        const modelSize = document.getElementById('modelSize');
+        const loading = document.getElementById('loading');
+        const errorMessage = document.getElementById('errorMessage');
+        const modelCount = document.getElementById('modelCount');
+        const scanStatus = document.getElementById('scanStatus');
+        const dimensionsDiv = document.getElementById('dimensions');
+        const dimX = document.getElementById('dimX');
+        const dimY = document.getElementById('dimY');
+        const dimZ = document.getElementById('dimZ');
+        const dimBase = document.getElementById('dimBase');
+        const refreshBtn = document.getElementById('refreshBtn');
+        const autoRefreshIndicator = document.getElementById('autoRefreshIndicator');
+        const updateNotification = document.getElementById('updateNotification');
+        const updateCount = document.getElementById('updateCount');
+        const axisCanvas = document.getElementById('axisCanvas');
+        const axisCtx = axisCanvas.getContext('2d');
+        const noModelsMessage = document.getElementById('noModelsMessage');
+        
+        let discoveredModels = [];
+        let currentModel = null;
+        let isInteractingWithViewer = false;
+        let autoRefreshInterval = null;
+        const AUTO_REFRESH_INTERVAL = 5000;
+        
+        let currentDistance = 2.5;
+        
+        viewerContainer.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            
+            const delta = e.deltaY;
+            const zoomSpeed = 0.004;
+            
+            currentDistance += delta * zoomSpeed;
+            currentDistance = Math.max(0.5, Math.min(100, currentDistance));
+            
+            const orbit = viewer.getCameraOrbit();
+            viewer.cameraOrbit = `${orbit.theta}rad ${orbit.phi}rad ${currentDistance}m`;
+        }, { passive: false });
+        
+        let lastPinchDistance = null;
+        
+        viewerContainer.addEventListener('touchstart', (e) => {
+            if (e.touches.length === 2) {
+                const dx = e.touches[0].clientX - e.touches[1].clientX;
+                const dy = e.touches[0].clientY - e.touches[1].clientY;
+                lastPinchDistance = Math.sqrt(dx * dx + dy * dy);
+            }
+            isInteractingWithViewer = true;
+        }, { passive: true });
+        
+        viewerContainer.addEventListener('touchmove', (e) => {
+            if (e.touches.length === 2 && lastPinchDistance) {
+                e.preventDefault();
+                
+                const dx = e.touches[0].clientX - e.touches[1].clientX;
+                const dy = e.touches[0].clientY - e.touches[1].clientY;
+                const currentPinchDistance = Math.sqrt(dx * dx + dy * dy);
+                
+                const delta = lastPinchDistance - currentPinchDistance;
+                const zoomSpeed = 0.02;
+                
+                currentDistance += delta * zoomSpeed;
+                currentDistance = Math.max(0.5, Math.min(100, currentDistance));
+                
+                const orbit = viewer.getCameraOrbit();
+                viewer.cameraOrbit = `${orbit.theta}rad ${orbit.phi}rad ${currentDistance}m`;
+                
+                lastPinchDistance = currentPinchDistance;
+            } else if (isInteractingWithViewer) {
+                e.preventDefault();
+            }
+        }, { passive: false });
+        
+        viewerContainer.addEventListener('touchend', (e) => {
+            if (e.touches.length < 2) {
+                lastPinchDistance = null;
+            }
+            isInteractingWithViewer = false;
+        }, { passive: true });
+        
+        viewer.addEventListener('camera-change', () => {
+            const orbit = viewer.getCameraOrbit();
+            if (orbit && orbit.radius) {
+                currentDistance = orbit.radius;
+            }
+        });
+        
+        function updateCanvasSize() {
+            if (window.innerWidth <= 480) {
+                axisCanvas.width = 45;
+                axisCanvas.height = 45;
+            } else if (window.innerWidth <= 768) {
+                axisCanvas.width = 55;
+                axisCanvas.height = 55;
+            } else {
+                axisCanvas.width = 90;
+                axisCanvas.height = 90;
+            }
+        }
+
+        updateCanvasSize();
+        window.addEventListener('resize', updateCanvasSize);
+        
+        function drawAxisIndicator() {
+            try {
+                const orbit = viewer.getCameraOrbit();
+                if (!orbit) return;
+                
+                const theta = orbit.theta;
+                const phi = orbit.phi;
+                
+                const canvasSize = axisCanvas.width;
+                axisCtx.clearRect(0, 0, canvasSize, canvasSize);
+                
+                const centerX = canvasSize / 2;
+                const centerY = canvasSize / 2;
+                const length = canvasSize * 0.31;
+                
+                const sinTheta = Math.sin(theta);
+                const cosTheta = Math.cos(theta);
+                const sinPhi = Math.sin(phi);
+                const cosPhi = Math.cos(phi);
+                
+                function project(x, y, z) {
+                    const x1 = x * cosTheta - z * sinTheta;
+                    const z1 = x * sinTheta + z * cosTheta;
+                    const y1 = y * cosPhi - z1 * sinPhi;
+                    
+                    return {
+                        x: centerX + x1,
+                        y: centerY - y1
+                    };
+                }
+                
+                const axes = [
+                    { x: length, y: 0, z: 0, color: '#ff0000', label: 'X' },
+                    { x: 0, y: length, z: 0, color: '#00ff00', label: 'Y' },
+                    { x: 0, y: 0, z: length, color: '#0000ff', label: 'Z' }
+                ];
+                
+                axes.sort((a, b) => {
+                    const zA = a.x * sinTheta + a.z * cosTheta;
+                    const zB = b.x * sinTheta + b.z * cosTheta;
+                    return zA - zB;
+                });
+                
+                const lineWidth = canvasSize <= 55 ? 1.5 : 2;
+                const arrowLength = canvasSize <= 55 ? 4 : 7;
+                const fontSize = canvasSize <= 55 ? 9 : 13;
+                
+                axes.forEach(axis => {
+                    const end = project(axis.x, axis.y, axis.z);
+                    const start = project(0, 0, 0);
+                    
+                    axisCtx.strokeStyle = axis.color;
+                    axisCtx.lineWidth = lineWidth;
+                    axisCtx.beginPath();
+                    axisCtx.moveTo(start.x, start.y);
+                    axisCtx.lineTo(end.x, end.y);
+                    axisCtx.stroke();
+                    
+                    const angle = Math.atan2(end.y - start.y, end.x - start.x);
+                    
+                    axisCtx.beginPath();
+                    axisCtx.moveTo(end.x, end.y);
+                    axisCtx.lineTo(
+                        end.x - arrowLength * Math.cos(angle - Math.PI / 6),
+                        end.y - arrowLength * Math.sin(angle - Math.PI / 6)
+                    );
+                    axisCtx.moveTo(end.x, end.y);
+                    axisCtx.lineTo(
+                        end.x - arrowLength * Math.cos(angle + Math.PI / 6),
+                        end.y - arrowLength * Math.sin(angle + Math.PI / 6)
+                    );
+                    axisCtx.stroke();
+                    
+                    axisCtx.fillStyle = axis.color;
+                    axisCtx.font = `bold ${fontSize}px Arial`;
+                    axisCtx.fillText(axis.label, end.x + 3, end.y + 3);
+                });
+                
+                const dotSize = canvasSize <= 55 ? 1.5 : 2.5;
+                axisCtx.fillStyle = '#333';
+                axisCtx.beginPath();
+                axisCtx.arc(centerX, centerY, dotSize, 0, Math.PI * 2);
+                axisCtx.fill();
+            } catch (e) {
+                // Silently fail if viewer not ready
+            }
+        }
+        
+        function updateAxisIndicator() {
+            drawAxisIndicator();
+            requestAnimationFrame(updateAxisIndicator);
+        }
+        
+        updateAxisIndicator();
+        
+        function updateDimensions() {
+            const dimensions = viewer.getDimensions();
+            
+            if (dimensions) {
+                const width = (dimensions.x * 1000).toFixed(1);
+                const height = (dimensions.y * 1000).toFixed(1);
+                const depth = (dimensions.z * 1000).toFixed(1);
+                
+                dimX.textContent = `${width} mm`;
+                dimY.textContent = `${height} mm`;
+                dimZ.textContent = `${depth} mm`;
+                dimBase.textContent = `${width} × ${depth} mm`;
+                
+                dimensionsDiv.style.display = 'block';
+            }
+        }
+        
+        function showNotification(count) {
+            updateCount.textContent = count;
+            updateNotification.classList.add('show');
+            setTimeout(() => {
+                updateNotification.classList.remove('show');
+            }, 3000);
+        }
+        
+        function filterModels(searchTerm) {
+            const filtered = discoveredModels.filter(model => {
+                const displayName = model.replace('.glb', '').replace(/_/g, ' ').toLowerCase();
+                return displayName.includes(searchTerm.toLowerCase());
+            });
+            
+            displayDropdown(filtered);
+        }
+        
+        function displayDropdown(models) {
+            dropdown.innerHTML = '';
+            
+            if (models.length === 0) {
+                const noResults = document.createElement('div');
+                noResults.className = 'dropdown-item no-results';
+                noResults.textContent = 'No models found';
+                dropdown.appendChild(noResults);
+            } else {
+                models.forEach(model => {
+                    const item = document.createElement('div');
+                    item.className = 'dropdown-item';
+                    const displayName = model.replace('.glb', '').replace(/_/g, ' ');
+                    item.textContent = displayName;
+                    
+                    if (model === currentModel) {
+                        item.classList.add('active');
+                    }
+                    
+                    item.onclick = () => {
+                        searchInput.value = displayName;
+                        dropdown.classList.remove('show');
+                        loadModel(model);
+                    };
+                    
+                    dropdown.appendChild(item);
+                });
+            }
+            
+            dropdown.classList.add('show');
+        }
+        
+        searchInput.addEventListener('focus', () => {
+            if (discoveredModels.length > 0) {
+                filterModels(searchInput.value);
+            }
+        });
+        
+        searchInput.addEventListener('input', (e) => {
+            const searchTerm = e.target.value;
+            filterModels(searchTerm);
+        });
+        
+        document.addEventListener('click', (e) => {
+            if (!searchInput.contains(e.target) && !dropdown.contains(e.target)) {
+                dropdown.classList.remove('show');
+            }
+        });
+        
+        searchInput.addEventListener('keydown', (e) => {
+            const items = dropdown.querySelectorAll('.dropdown-item:not(.no-results)');
+            let currentIndex = Array.from(items).findIndex(item => item.classList.contains('active'));
+            
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                if (currentIndex < items.length - 1) {
+                    items[currentIndex]?.classList.remove('active');
+                    items[currentIndex + 1]?.classList.add('active');
+                    items[currentIndex + 1]?.scrollIntoView({ block: 'nearest' });
+                }
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                if (currentIndex > 0) {
+                    items[currentIndex]?.classList.remove('active');
+                    items[currentIndex - 1]?.classList.add('active');
+                    items[currentIndex - 1]?.scrollIntoView({ block: 'nearest' });
+                }
+            } else if (e.key === 'Enter') {
+                e.preventDefault();
+                const activeItem = dropdown.querySelector('.dropdown-item.active');
+                if (activeItem && !activeItem.classList.contains('no-results')) {
+                    activeItem.click();
+                }
+            } else if (e.key === 'Escape') {
+                dropdown.classList.remove('show');
+                searchInput.blur();
+            }
+        });
+        
+        refreshBtn.addEventListener('click', async () => {
+            refreshBtn.classList.add('refreshing');
+            await discoverModels(true);
+            refreshBtn.classList.remove('refreshing');
+        });
+
+        document.body.addEventListener('touchmove', (e) => {
+            if (isInteractingWithViewer) {
+                e.preventDefault();
+            }
+        }, { passive: false });
+        
+        async function discoverModels(isManualRefresh = false) {
+            try {
+                if (!isManualRefresh && discoveredModels.length === 0) {
+                    scanStatus.classList.add('show');
+                    noModelsMessage.style.display = 'none';
+                }
+                
+                const response = await fetch('.');
+                const html = await response.text();
+                
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+                const links = doc.querySelectorAll('a');
+                
+                const glbFiles = [];
+                links.forEach(link => {
+                    const href = link.getAttribute('href');
+                    if (href && href.toLowerCase().endsWith('.glb')) {
+                        glbFiles.push(decodeURIComponent(href));
+                    }
+                });
+                
+                glbFiles.sort();
+                
+                const modelsChanged = JSON.stringify(discoveredModels) !== JSON.stringify(glbFiles);
+                
+                discoveredModels = glbFiles;
+                
+                scanStatus.classList.remove('show');
+                modelCount.textContent = `(${discoveredModels.length} found)`;
+                
+                if (modelsChanged && (isManualRefresh || autoRefreshInterval !== null)) {
+                    showNotification(discoveredModels.length);
+                }
+                
+                if (discoveredModels.length === 0) {
+                    searchInput.placeholder = 'No GLB files found';
+                    searchInput.disabled = true;
+                    noModelsMessage.style.display = 'block';
+                    return;
+                }
+                
+                noModelsMessage.style.display = 'none';
+                searchInput.disabled = false;
+                searchInput.placeholder = 'Search or select a model...';
+                
+                if (!currentModel && discoveredModels.length > 0) {
+                    const firstModel = discoveredModels[0];
+                    const displayName = firstModel.replace('.glb', '').replace(/_/g, ' ');
+                    searchInput.value = displayName;
+                    setTimeout(() => loadModel(firstModel), 500);
+                }
+                
+                if (dropdown.classList.contains('show')) {
+                    filterModels(searchInput.value);
+                }
+                
+            } catch (error) {
+                console.error('Error discovering models:', error);
+                scanStatus.textContent = 'Error: ' + error.message;
+                scanStatus.style.color = '#dc3545';
+                scanStatus.classList.add('show');
+                searchInput.placeholder = 'Error loading models';
+                searchInput.disabled = true;
+                noModelsMessage.style.display = 'block';
+            }
+        }
+        
+        function loadModel(filename) {
+            currentModel = filename;
+            
+            loading.classList.add('show');
+            errorMessage.classList.remove('show');
+            dimensionsDiv.style.display = 'none';
+            
+            modelName.textContent = filename;
+            modelSize.textContent = 'Loading...';
+            
+            viewer.src = filename;
+            
+            currentDistance = 2.5;
+            
+            viewer.addEventListener('load', function onLoad() {
+                loading.classList.remove('show');
+                modelSize.textContent = 'Model loaded successfully';
+                viewer.removeEventListener('load', onLoad);
+                
+                setTimeout(updateDimensions, 100);
+                
+                fetch(filename, { method: 'HEAD' })
+                    .then(response => {
+                        const size = response.headers.get('content-length');
+                        if (size) {
+                            const kb = Math.round(size / 1024);
+                            modelSize.textContent = `Size: ${kb} KB`;
+                        }
+                    })
+                    .catch(() => {});
+            });
+            
+            viewer.addEventListener('error', function onError(event) {
+                loading.classList.remove('show');
+                errorMessage.classList.add('show');
+                modelSize.textContent = 'Failed to load';
+                console.error('Error loading model:', event);
+                viewer.removeEventListener('error', onError);
+            });
+        }
+        
+        function startAutoRefresh() {
+            autoRefreshIndicator.classList.add('active');
+            autoRefreshInterval = setInterval(() => {
+                discoverModels(false);
+            }, AUTO_REFRESH_INTERVAL);
+        }
+        
+        function stopAutoRefresh() {
+            autoRefreshIndicator.classList.remove('active');
+            if (autoRefreshInterval) {
+                clearInterval(autoRefreshInterval);
+                autoRefreshInterval = null;
+            }
+        }
+        
+        discoverModels().then(() => {
+            startAutoRefresh();
+        });
+        
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                stopAutoRefresh();
+            } else {
+                startAutoRefresh();
+                discoverModels(false);
+            }
+        });
+    </script>
+</body>
+</html>
