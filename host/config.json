@@ -1,0 +1,6 @@
+{
+    "MqttFolder": "C:\\Users\\lwiny\\OneDrive\\Desktop\\Hackathon\\MQTT_Server",
+    "Cam1Url": "http://192.168.137.50:7123",
+    "Cam2Url": "http://192.168.137.10:7123",
+    "Cam3Url": "http://192.168.137.30:7123"
+}
