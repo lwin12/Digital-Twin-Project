@@ -57,6 +57,11 @@ The full pipeline from physical object to browser-viewable 3D model runs through
 | Enclosure | White lightbox for diffused lighting |
 | Host PC | Windows PC (runs control app + Meshroom) |
 
+## Connection Diagram
+<img width="2324" height="1334" alt="image" src="https://github.com/user-attachments/assets/6ab7c870-150d-4e26-bdbd-6f9480f10c0b" />
+
+
+
 ## Software Stack
 
 | Layer | Component | Technology |
