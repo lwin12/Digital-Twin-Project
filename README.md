@@ -2,7 +2,7 @@
 
 An automated photogrammetry system that captures multi-angle images of physical objects using three synchronized Raspberry Pi cameras on a motorized turntable, reconstructs them into textured 3D meshes with Meshroom, and serves the results as interactive GLB models in a web viewer.
 
-Built for a Hackathon.
+
 
 ## How It Works
 
